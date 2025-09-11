@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QTableView, QHeaderVie
                                QFileDialog, QMessageBox, QMenu, QProgressBar, QStatusBar,
                                QVBoxLayout, QWidget, QLabel, QHBoxLayout, QScrollArea)
 from PySide6.QtGui import QAction, QStandardItemModel, QStandardItem
-from PySide6.QtCore import Qt, QSettings, QThread, Signal
+from PySide6.QtCore import QSettings, QThread, Signal
 
 from CSVManager.Reader import Reader as CSVReader
 
@@ -39,7 +39,11 @@ class CSVLoaderThread(QThread):
 
 
 class CSVTableViewer(QMainWindow):
+
     def __init__(self):
+        """
+        Инициализация элементов интерфейсов
+        """
         super().__init__()
         self.setWindowTitle("Просмотрщик CSV файлов")
         self.setGeometry(100, 100, 1200, 800)  # Увеличиваем размер окна
@@ -100,6 +104,10 @@ class CSVTableViewer(QMainWindow):
         self._load_settings()
 
     def _create_actions(self):
+        """
+        Создание действий для окон.
+        :return:
+        """
         # Действие для открытия файла
         self.open_action = QAction("Открыть", self)
         self.open_action.setShortcut("Ctrl+O")
@@ -116,6 +124,10 @@ class CSVTableViewer(QMainWindow):
         self.resize_columns_action.triggered.connect(self._resize_columns_to_contents)
 
     def _create_menus(self):
+        """
+        Создание панели меню.
+        :return:
+        """
         # Меню Файл
         file_menu = self.menuBar().addMenu("Файл")
         file_menu.addAction(self.open_action)
@@ -128,6 +140,10 @@ class CSVTableViewer(QMainWindow):
 
 
     def _create_status_bar(self):
+        """
+        Создание панели состояния.
+        :return:
+        """
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
@@ -147,7 +163,10 @@ class CSVTableViewer(QMainWindow):
             self.settings.setValue("encoding", self.detected_encoding)
 
     def _open_file(self):
-        # Диалог выбора файла
+        """
+        Окно открытия файла.
+        :return:
+        """
         file_name, _ = QFileDialog.getOpenFileName(
             self, "Открыть CSV файл", "",
             "CSV Files (*.csv);;All Files (*)"
@@ -157,6 +176,11 @@ class CSVTableViewer(QMainWindow):
             self._load_csv_file(file_name)
 
     def _load_csv_file(self, file_name):
+        """
+        Загрузка данных из CSV файла.
+        :param file_name: Путь к файлу.
+        :return:
+        """
         # Показать прогресс-бар
         self.progress_bar.setRange(0, 0)  # Неопределенный прогресс
         self.progress_bar.setVisible(True)
@@ -169,7 +193,13 @@ class CSVTableViewer(QMainWindow):
         self.loader_thread.start()
 
     def _on_data_loaded(self, headers, data):
-        # Обработка загруженных данных
+        """
+        Обработка загруженных данных
+
+        :param headers: Заголовки
+        :param data: Данные
+        :return:
+        """
         self.model.clear()
 
         # Установка заголовков
@@ -193,13 +223,22 @@ class CSVTableViewer(QMainWindow):
         self._resize_columns_to_contents()
 
     def _update_file_info(self, row_count, col_count):
+        """
+        Отображение информации о файле.
+        :param row_count: Количество строк.
+        :param col_count: Количество столбцов.
+        :return:
+        """
         # Обновляем информацию о файле
         self.encoding_label.setText(f"Кодировка: {self.loader_thread.encoding}")
         self.delimiter_label.setText(f"Разделитель: {self.loader_thread.delimiter}")
         self.dimensions_label.setText(f"Строк: {row_count}, Столбцов: {col_count}")
 
     def _resize_columns_to_contents(self):
-        # Подгоняем ширину столбцов под содержимое
+        """
+        Подгонка ширины столбцов.
+        :return:
+        """
         self.table_view.resizeColumnsToContents()
 
         # Если столбцы все еще не помещаются, устанавливаем минимальную ширину
@@ -209,13 +248,21 @@ class CSVTableViewer(QMainWindow):
             self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
     def _on_load_error(self, error_msg):
-        # Обработка ошибок загрузки
+        """
+        Обработка ошибок загрузки.
+        :param error_msg: Сообщение об ошибке.
+        :return:
+        """
         self.progress_bar.setVisible(False)
         QMessageBox.critical(self, "Ошибка загрузки",
                              f"Не удалось загрузить файл:\n{error_msg}")
 
     def contextMenuEvent(self, event):
-        # Контекстное меню для таблицы
+        """
+        Контекстное меню.
+        :param event: Ивент.
+        :return:
+        """
         context_menu = QMenu(self)
 
         copy_action = context_menu.addAction("Копировать")
@@ -227,7 +274,9 @@ class CSVTableViewer(QMainWindow):
         context_menu.exec_(event.globalPos())
 
     def _copy_selection(self):
-        # Копирование выделенных данных
+        """
+        Копирование выделенных данных
+        """
         selection = self.table_view.selectionModel()
         if selection.hasSelection():
             indexes = selection.selectedIndexes()
@@ -244,7 +293,7 @@ class CSVTableViewer(QMainWindow):
             self._resize_columns_to_contents()
 
     def closeEvent(self, event):
-        # Сохранение настроек при закрытия
+        # Сохранение настроек при закрытии
         self._save_settings()
         event.accept()
 
