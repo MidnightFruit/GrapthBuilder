@@ -11,37 +11,7 @@ class GraphBuilder(QtWidgets.QMainWindow):
         self.resize(840, 840)
         self.setMinimumSize(840, 840)
 
-        # Меню бар
-        menu_bar = self.menuBar()
-        menu_bar.setMinimumHeight(20)
-        file_menu = menu_bar.addMenu("Файл")
-
-        menu_bar.setStyleSheet("""
-    QMenuBar {
-        height: 20px;
-    }
-    QMenuBar::item {
-        height: 20px;
-        padding: 0px ;
-        background: transparent;
-    }
-    QMenuBar::item:selected {
-        background: #969696;
-    }
-    QMenuBar::item:pressed {
-        background: #c0c0c0;
-    }
-""")
-
-        # Меню файла
-        open_action = QtGui.QAction("Открыть", self)
-        save_as_action = QtGui.QAction("Сохранить как ...", self)
-        exit_action = QtGui.QAction("Выход", self)
-        exit_action.triggered.connect(self.close)
-
-        file_menu.addAction(open_action)
-        file_menu.addAction(save_as_action)
-        file_menu.addAction(exit_action)
+        self._init_menu()
 
         # Создание центрального виджета и layout
         central_widget = QtWidgets.QWidget()
@@ -56,14 +26,32 @@ class GraphBuilder(QtWidgets.QMainWindow):
         control_layout = QtWidgets.QVBoxLayout(control_widget)
         control_layout.setContentsMargins(0,5,0,0)
 
+        self._init_btn()
+
+        control_layout.addWidget(self.clear_btn)
+        control_layout.addWidget(self.build_median_btn)
+        control_layout.addStretch()
+        control_layout.setAlignment(QtCore.Qt.AlignCenter)
+
+        main_layout.addWidget(control_widget)
+
+        # Виджет для графиков
+        self.graph_widget = pg.GraphicsLayoutWidget()
+        main_layout.addWidget(self.graph_widget, 1)
+
+    def _init_btn(self):
+        """
+        Инициализация кнопок на контрольной панели
+        :return:
+        """
         # Стиль кнопок
 
         btn_style = """
-        QPushButton {
-            font-family: Regular;
-            font-size: 10px;
-        }
-        """
+                QPushButton {
+                    font-family: Regular;
+                    font-size: 10px;
+                }
+                """
 
         # Кнопки управления
         self.build_median_btn = QtWidgets.QPushButton("Построить\n медиану")
@@ -77,22 +65,54 @@ class GraphBuilder(QtWidgets.QMainWindow):
         self.clear_btn.pressed.connect(self.clear_graph)
         self.clear_btn.setFixedSize(100, 30)
 
-        control_layout.addWidget(self.clear_btn)
-        control_layout.addWidget(self.build_median_btn)
-        control_layout.addStretch()
-        control_layout.setAlignment(QtCore.Qt.AlignCenter)
+    def _init_menu(self):
+        """
+        Инициализация меню панели
+        :return:
+        """
 
-        main_layout.addWidget(control_widget)
+        # Меню бар
+        menu_bar = self.menuBar()
+        menu_bar.setMinimumHeight(20)
+        file_menu = menu_bar.addMenu("Файл")
 
-        # Виджет для графиков
-        self.graph_widget = pg.GraphicsLayoutWidget()
-        main_layout.addWidget(self.graph_widget, 1)
+        menu_bar.setStyleSheet("""
+            QMenuBar {
+                height: 20px;
+            }
+            QMenuBar::item {
+                height: 20px;
+                padding: 0px ;
+                background: transparent;
+            }
+            QMenuBar::item:selected {
+                background: #969696;
+            }
+            QMenuBar::item:pressed {
+                background: #c0c0c0;
+            }
+        """)
+
+        # Меню файла
+        open_action = QtGui.QAction("Открыть", self)
+        save_as_action = QtGui.QAction("Сохранить как ...", self)
+        exit_action = QtGui.QAction("Выход", self)
+        exit_action.triggered.connect(self.close)
+
+        file_menu.addAction(open_action)
+        file_menu.addAction(save_as_action)
+        file_menu.addAction(exit_action)
+
+    def _open_CSV_loader(self):
+        pass
 
     def build_median(self):
         pass
 
     def clear_graph(self):
         pass
+
+
 
 app = QtWidgets.QApplication(sys.argv)
 
