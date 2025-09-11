@@ -1,17 +1,15 @@
 import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow, QTableView, QHeaderView,
                                QFileDialog, QMessageBox, QMenu, QProgressBar, QStatusBar,
-                               QVBoxLayout, QWidget, QLabel, QHBoxLayout, QSplitter,
-                               QScrollArea, QSizePolicy)
+                               QVBoxLayout, QWidget, QLabel, QHBoxLayout, QScrollArea)
 from PySide6.QtGui import QAction, QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt, QSettings, QThread, Signal
 
-# Импортируем ваш класс Reader с другим именем чтобы избежать конфликта
 from CSVManager.Reader import Reader as CSVReader
 
 
 class CSVLoaderThread(QThread):
-    """Поток для загрузки CSV данных с использованием вашего Reader класса"""
+    """Поток для загрузки CSV данных с использованием Reader класса"""
     data_loaded = Signal(list, list)
     error_occurred = Signal(str)
 
@@ -23,7 +21,6 @@ class CSVLoaderThread(QThread):
 
     def run(self):
         try:
-            # Используем ваш CSVReader класс для чтения CSV
             reader = CSVReader(self.file_path, self.delimiter, self.encoding)
             data = reader.read()
             self.encoding = reader.encoding
