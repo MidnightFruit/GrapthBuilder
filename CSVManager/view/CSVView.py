@@ -67,17 +67,17 @@ class CSVTableViewer(QMainWindow):
 
         # Создаем виджет для отображения информации о файле
         self.info_widget = QWidget()
-        info_layout = QHBoxLayout()
-        self.info_widget.setLayout(info_layout)
+        self.info_layout = QHBoxLayout()
+        self.info_widget.setLayout(self.info_layout)
 
         self.encoding_label = QLabel("Кодировка: ")
         self.delimiter_label = QLabel("Разделитель: ")
         self.dimensions_label = QLabel("Размеры: ")
 
-        info_layout.addWidget(self.encoding_label)
-        info_layout.addWidget(self.delimiter_label)
-        info_layout.addWidget(self.dimensions_label)
-        info_layout.addStretch()
+        self.info_layout.addWidget(self.encoding_label)
+        self.info_layout.addWidget(self.delimiter_label)
+        self.info_layout.addWidget(self.dimensions_label)
+        self.info_layout.addStretch()
 
         # Основной контейнер
         container = QWidget()
