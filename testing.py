@@ -2,8 +2,12 @@ import sys
 from PySide6 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 
+from CSVLoader import CSVLoader
+
 
 class GraphBuilder(QtWidgets.QMainWindow):
+
+    _CSV_loader_window = None
 
     def __init__(self):
         super().__init__()
@@ -65,6 +69,15 @@ class GraphBuilder(QtWidgets.QMainWindow):
         self.clear_btn.pressed.connect(self.clear_graph)
         self.clear_btn.setFixedSize(100, 30)
 
+    def _open_CSV_loader(self):
+        if not self._CSV_loader_window:
+            self._CSV_loader_window = CSVLoader()
+            self._CSV_loader_window.cols_selected.connect(self._on_cols_selected)
+
+        self._CSV_loader_window.show()
+        self._CSV_loader_window.raise_()
+        self._CSV_loader_window.activateWindow()
+
     def _init_menu(self):
         """
         Инициализация меню панели
@@ -97,13 +110,16 @@ class GraphBuilder(QtWidgets.QMainWindow):
         open_action = QtGui.QAction("Открыть", self)
         save_as_action = QtGui.QAction("Сохранить как ...", self)
         exit_action = QtGui.QAction("Выход", self)
+
         exit_action.triggered.connect(self.close)
+        open_action.triggered.connect(self._CSV_loader_window)
+
 
         file_menu.addAction(open_action)
         file_menu.addAction(save_as_action)
         file_menu.addAction(exit_action)
 
-    def _open_CSV_loader(self):
+    def _on_cols_selected(self):
         pass
 
     def build_median(self):

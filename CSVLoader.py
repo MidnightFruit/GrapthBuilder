@@ -40,6 +40,8 @@ class CSVLoaderNThread(QThread):
 
 class CSVLoader(CSVTableViewer):
 
+    cols_selected = Signal(str, str)
+
     def __init__(self):
         super().__init__()
         self._init_selection_widget()
