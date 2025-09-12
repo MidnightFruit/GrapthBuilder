@@ -74,6 +74,10 @@ class CSVLoader(CSVTableViewer):
     
     def _on_data_loaded(self, headers, data):
         super()._on_data_loaded(headers, data)
+
+        self.x_col_combobox.clear()
+        self.y_col_combobox.clear()
+
         self.x_col_combobox.addItems(headers)
         self.y_col_combobox.addItems(headers)
 
