@@ -1,7 +1,7 @@
 import sys
 
-from PySide6.QtWidgets import QApplication, QFileDialog
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import QApplication, QFileDialog, QComboBox, QPushButton, QLabel
 
 from CSVManager.view.CSVView import CSVTableViewer
 from CSVManager.Reader import Reader as CSVReader
@@ -42,6 +42,7 @@ class CSVLoader(CSVTableViewer):
 
     def __init__(self):
         super().__init__()
+        self._init_selection_widget()
 
     def _open_file(self):
         """
@@ -76,8 +77,37 @@ class CSVLoader(CSVTableViewer):
         self.x_col_combobox.addItems(headers)
         self.y_col_combobox.addItems(headers)
 
+    def _init_selection_widget(self):
+
+        self.y_col_combobox = QComboBox()
+        self.x_col_combobox = QComboBox()
+
+        self.x_col_combobox.setPlaceholderText("Выбор столбца x")
+        self.y_col_combobox.setPlaceholderText("Выбор столбца y")
+
+        self.build_graph_btn = QPushButton("Построить")
+        self.build_graph_btn.setEnabled(False)
+
+        self.info_layout.addWidget(QLabel("Ось X"))
+        self.info_layout.addWidget(self.x_col_combobox)
+        self.info_layout.addWidget(QLabel("Ось Y"))
+        self.info_layout.addWidget(self.y_col_combobox)
+        self.info_layout.addWidget(self.build_graph_btn)
+
+        self.build_graph_btn.clicked.connect(self.build_graph)
+        self.x_col_combobox.currentIndexChanged.connect(self._on_selection_changed)
+        self.y_col_combobox.currentIndexChanged.connect(self._on_selection_changed)
+
+    def build_graph(self):
+        print("build")
         pass
 
+    def _on_selection_changed(self):
+        x_selection = self.x_col_combobox.currentIndex() >= 0
+        y_selection = self.y_col_combobox.currentIndex() >= 0
+        self.build_graph_btn.setEnabled(x_selection and y_selection)
+
+    
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
