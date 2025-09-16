@@ -1,4 +1,5 @@
 import sys
+
 from PySide6 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 
@@ -42,6 +43,8 @@ class GraphBuilder(QtWidgets.QMainWindow):
         # Виджет для графиков
         self.graph_widget = pg.GraphicsLayoutWidget()
         main_layout.addWidget(self.graph_widget, 1)
+
+        self.plots = []
 
     def _init_btn(self):
         """
@@ -112,14 +115,39 @@ class GraphBuilder(QtWidgets.QMainWindow):
         exit_action = QtGui.QAction("Выход", self)
 
         exit_action.triggered.connect(self.close)
-        open_action.triggered.connect(self._CSV_loader_window)
+        open_action.triggered.connect(self._open_CSV_loader)
 
 
         file_menu.addAction(open_action)
         file_menu.addAction(save_as_action)
         file_menu.addAction(exit_action)
 
-    def _on_cols_selected(self):
+    def _on_cols_selected(self, data):
+        print(f"data: {data}")
+        print(f"for x: {self._CSV_loader_window.x_col_combobox.currentText()}")
+        print(f"for y: {self._CSV_loader_window.y_col_combobox.currentText()}")
+
+        x_field = self._CSV_loader_window.x_col_combobox.currentText()
+        y_field = self._CSV_loader_window.y_col_combobox.currentText()
+
+        plot = self.graph_widget.addPlot(titele=f"X = {x_field}"
+                                         f"Y = {y_field}")
+        plot.addLegend()
+        plot.showGrid(x=True, y=True)
+
+        x = [float(item[x_field].replace(",", ".")) for item in data]
+        y = [float(item[y_field].replace(",", ".")) for item in data]
+
+        scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=2, color='r'), symbol='o', size=10)
+        scatter.setData(x, y)
+
+        # curve = plot.plot(pen=pg.mkPen('r', width=2))
+        #
+        # curve.setData(x, y)
+
+        plot.addItem(scatter)
+
+        # self.plots.append([plot, curve])
         pass
 
     def build_median(self):
@@ -129,12 +157,22 @@ class GraphBuilder(QtWidgets.QMainWindow):
         pass
 
 
+    def closeEvent(self, event, /):
+        super().closeEvent(event)
+        if not self._CSV_loader_window:
+            return
+        self._CSV_loader_window.close()
 
-app = QtWidgets.QApplication(sys.argv)
+if __name__ == "__main__":
 
-app.setStyle("Fusion")
+    app = QtWidgets.QApplication.instance()
+
+    if app is None:  # Если его нет,
+        app = QtWidgets.QApplication(sys.argv)  # создаем новый
+
+    app.setStyle("Fusion")
 
 
-window = GraphBuilder()
-window.show()
-app.exec()
+    window = GraphBuilder()
+    window.show()
+    app.exec()
