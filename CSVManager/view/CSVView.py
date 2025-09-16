@@ -11,6 +11,7 @@ from CSVManager.Reader import Reader as CSVReader
 class CSVLoaderThread(QThread):
     """Поток для загрузки CSV данных с использованием Reader класса"""
     data_loaded = Signal(list, list)
+    solid_data_loaded = Signal(list)
     error_occurred = Signal(str)
 
     def __init__(self, file_path, delimiter=None, encoding=None):
@@ -22,17 +23,19 @@ class CSVLoaderThread(QThread):
     def run(self):
         try:
             reader = CSVReader(self.file_path, self.delimiter, self.encoding)
-            data = reader.read()
+            self.data = reader.read()
             self.encoding = reader.encoding
             self.delimiter = reader.delimiter
-            if data:
+            if self.data:
                 # Извлекаем заголовки из первого элемента
-                headers = list(data[0].keys())
+                headers = list(self.data[0].keys())
                 # Преобразуем данные в список списков для таблицы
-                rows = [list(row.values()) for row in data]
+                rows = [list(row.values()) for row in self.data]
                 self.data_loaded.emit(headers, rows)
+                self.solid_data_loaded.emit(self.data)
             else:
                 self.data_loaded.emit([], [])
+                self.solid_data_loaded.emit([])
 
         except Exception as e:
             self.error_occurred.emit(str(e))
@@ -102,6 +105,8 @@ class CSVTableViewer(QMainWindow):
 
         # Загружаем настройки
         self._load_settings()
+
+        self._solid_data = []
 
     def _create_actions(self):
         """
@@ -190,7 +195,15 @@ class CSVTableViewer(QMainWindow):
         self.loader_thread = CSVLoaderThread(file_name, encoding=self.encoding)
         self.loader_thread.data_loaded.connect(self._on_data_loaded)
         self.loader_thread.error_occurred.connect(self._on_load_error)
+        self.loader_thread.solid_data_loaded.connect(self.set_solid_data)
         self.loader_thread.start()
+
+    @property
+    def solid_data(self):
+        return self._solid_data
+
+    def set_solid_data(self, data: list):
+        self._solid_data = data
 
     def _on_data_loaded(self, headers, data):
         """
