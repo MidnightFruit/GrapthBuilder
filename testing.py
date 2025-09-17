@@ -44,7 +44,10 @@ class GraphBuilder(QtWidgets.QMainWindow):
         self.graph_widget = pg.GraphicsLayoutWidget()
         main_layout.addWidget(self.graph_widget, 1)
 
-        self.plots = []
+        self.graphs = {}
+        self.plot = None
+
+        self.is_line = False
 
     def _init_btn(self):
         """
@@ -76,6 +79,7 @@ class GraphBuilder(QtWidgets.QMainWindow):
         if not self._CSV_loader_window:
             self._CSV_loader_window = CSVLoader()
             self._CSV_loader_window.cols_selected.connect(self._on_cols_selected)
+            self._CSV_loader_window.is_line_checked.connect(self.set_is_lined)
 
         self._CSV_loader_window.show()
         self._CSV_loader_window.raise_()
@@ -129,32 +133,60 @@ class GraphBuilder(QtWidgets.QMainWindow):
 
         x_field = self._CSV_loader_window.x_col_combobox.currentText()
         y_field = self._CSV_loader_window.y_col_combobox.currentText()
+        file_name = self._CSV_loader_window.file_name
 
-        plot = self.graph_widget.addPlot(titele=f"X = {x_field}"
+        graph_key = file_name+x_field+y_field
+        graph = []
+
+        if not self.plot:
+            self.plot = self.graph_widget.addPlot(titele=f"X = {x_field}"
                                          f"Y = {y_field}")
-        plot.addLegend()
-        plot.showGrid(x=True, y=True)
+            self.plot.addLegend()
+            self.plot.showGrid(x=True, y=True)
+
 
         x = [float(item[x_field].replace(",", ".")) for item in data]
         y = [float(item[y_field].replace(",", ".")) for item in data]
 
-        scatter = pg.ScatterPlotItem(pen=pg.mkPen(width=2, color='r'), symbol='o', size=10)
-        scatter.setData(x, y)
+        if self.graphs.get(graph_key, False):
 
-        # curve = plot.plot(pen=pg.mkPen('r', width=2))
-        #
-        # curve.setData(x, y)
+            if self.is_line:
+                curve = self.plot.plot(pen=pg.mkPen('r', width=2), symbol='o')
+                curve.setData(x, y)
+                graph.append(curve)
+            else:
+                curve = self.plot.plot(pen=None, symbol='o')
+                curve.setData(x, y)
+                graph.append(curve)
 
-        plot.addItem(scatter)
+        else:
+            if self.is_line:
+                curve = self.plot.plot(pen=pg.mkPen('r', width=2), symbol='o')
 
-        # self.plots.append([plot, curve])
+                curve.setData(x, y)
+
+                graph.append(curve)
+            else:
+                curve = self.plot.plot(pen=None, symbol='o')
+
+                curve.setData(x, y)
+
+                graph.append(curve)
+
+        self.graphs[file_name+x_field+y_field] = graph
         pass
+
+    def set_is_lined(self, _is_lined):
+        self.is_line = _is_lined
 
     def build_median(self):
         pass
 
     def clear_graph(self):
-        pass
+        if not self.graphs:
+            return
+        self.plot.clear()
+        self.graphs = {}
 
 
     def closeEvent(self, event, /):

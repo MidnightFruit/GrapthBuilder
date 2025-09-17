@@ -2,8 +2,7 @@ import sys
 import time
 
 from PySide6.QtCore import QThread, Signal
-from PySide6.QtWidgets import QApplication, QFileDialog, QComboBox, QPushButton, QLabel
-
+from PySide6.QtWidgets import QApplication, QFileDialog, QComboBox, QPushButton, QLabel, QCheckBox
 
 from CSVManager.view.CSVView import CSVTableViewer, CSVLoaderThread
 from CSVManager.Reader import Reader as CSVReader
@@ -44,9 +43,12 @@ class CSVLoader(CSVTableViewer):
 
     cols_selected = Signal(list)
 
+    is_line_checked = Signal(bool)
+
     def __init__(self):
         super().__init__()
         self._init_selection_widget()
+        self.setMaximumHeight(350)
 
     def _open_file(self):
         """
@@ -89,6 +91,7 @@ class CSVLoader(CSVTableViewer):
 
         self.y_col_combobox = QComboBox()
         self.x_col_combobox = QComboBox()
+        self.is_line_checkbox = QCheckBox("Соединить линией?")
 
         self.x_col_combobox.setPlaceholderText("Выбор столбца x")
         self.y_col_combobox.setPlaceholderText("Выбор столбца y")
@@ -101,10 +104,19 @@ class CSVLoader(CSVTableViewer):
         self.info_layout.addWidget(QLabel("Ось Y"))
         self.info_layout.addWidget(self.y_col_combobox)
         self.info_layout.addWidget(self.build_graph_btn)
+        self.info_layout.addWidget(self.is_line_checkbox)
 
         self.build_graph_btn.clicked.connect(self._load_csv_file)
         self.x_col_combobox.currentIndexChanged.connect(self._on_selection_changed)
         self.y_col_combobox.currentIndexChanged.connect(self._on_selection_changed)
+
+        self.is_line_checkbox.stateChanged.connect(self.line_checkbox_changed)
+
+    def line_checkbox_changed(self, state):
+        if state == 2:
+            self.is_line_checked.emit(True)
+        else:
+            self.is_line_checked.emit(False)
 
     def build_graph(self, list):
         print("build")
