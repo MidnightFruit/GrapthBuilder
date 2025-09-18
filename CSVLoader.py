@@ -1,11 +1,13 @@
 import sys
 import time
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication, QFileDialog, QComboBox, QPushButton, QLabel, QCheckBox
 
 from CSVManager.view.CSVView import CSVTableViewer, CSVLoaderThread
 from CSVManager.Reader import Reader as CSVReader
+from ColorListModel import ColorListModel, ColorDelegate
 
 
 class CSVLoaderNThread(QThread):
@@ -41,14 +43,32 @@ class CSVLoaderNThread(QThread):
 
 class CSVLoader(CSVTableViewer):
 
-    cols_selected = Signal(list)
+    cols_selected = Signal(list, str, str, str)
 
     is_line_checked = Signal(bool)
+
+    color_selected = Signal(str)
+
+    colors = [
+        ("Красный", QColor("red")),
+        ("Зеленый", QColor("green")),
+        ("Синий", QColor("blue")),
+        ("Желтый", QColor("yellow")),
+        ("Голубой", QColor("cyan")),
+        ("Пурпурный", QColor("magenta")),
+        ("Черный", QColor("black")),
+        ("Белый", QColor("white")),
+        ("Оранжевый", QColor("#FFA500")),
+        ("Фиолетовый", QColor("#800080")),
+        # QColor("gray"), # Пример добавления без имени
+    ]
 
     def __init__(self):
         super().__init__()
         self._init_selection_widget()
         self.setMaximumHeight(350)
+
+
 
     def _open_file(self):
         """
@@ -92,9 +112,18 @@ class CSVLoader(CSVTableViewer):
         self.y_col_combobox = QComboBox()
         self.x_col_combobox = QComboBox()
         self.is_line_checkbox = QCheckBox("Соединить линией?")
+        self.color_combobox = QComboBox()
 
         self.x_col_combobox.setPlaceholderText("Выбор столбца x")
         self.y_col_combobox.setPlaceholderText("Выбор столбца y")
+        self.color_combobox.setPlaceholderText("Выбор цвета")
+        self.color_combobox.setToolTip("Выбор цвета")
+
+        self.color_model = ColorListModel(self.colors)
+        self.color_combobox.setModel(self.color_model)
+
+        self.color_delegate = ColorDelegate()
+        self.color_combobox.setItemDelegate(self.color_delegate)
 
         self.build_graph_btn = QPushButton("Построить")
         self.build_graph_btn.setEnabled(False)
@@ -103,14 +132,18 @@ class CSVLoader(CSVTableViewer):
         self.info_layout.addWidget(self.x_col_combobox)
         self.info_layout.addWidget(QLabel("Ось Y"))
         self.info_layout.addWidget(self.y_col_combobox)
-        self.info_layout.addWidget(self.build_graph_btn)
+        self.info_layout.addWidget(QLabel("Выбор цвета"))
+        self.info_layout.addWidget(self.color_combobox)
         self.info_layout.addWidget(self.is_line_checkbox)
+
+        self.info_layout.addWidget(self.build_graph_btn)
 
         self.build_graph_btn.clicked.connect(self._load_csv_file)
         self.x_col_combobox.currentIndexChanged.connect(self._on_selection_changed)
         self.y_col_combobox.currentIndexChanged.connect(self._on_selection_changed)
-
         self.is_line_checkbox.stateChanged.connect(self.line_checkbox_changed)
+        self.color_combobox.currentIndexChanged.connect(self.on_color_selected)
+
 
     def line_checkbox_changed(self, state):
         if state == 2:
@@ -123,15 +156,32 @@ class CSVLoader(CSVTableViewer):
         self.progress_bar.setVisible(False)
         self.status_bar.showMessage("")
 
-        keys_to_build = [self.x_col_combobox.currentText(), self.y_col_combobox.currentText()]
+        x_field = self.x_col_combobox.currentText()
+
+        y_field = self.y_col_combobox.currentText()
+
+        keys_to_build = [x_field, y_field]
 
         data_for_build = [{key: item[key] for key in keys_to_build} for item in list]
-        self.cols_selected.emit(data_for_build)
+        self.cols_selected.emit(data_for_build, self.file_name, x_field, y_field)
 
     def _on_selection_changed(self):
         x_selection = self.x_col_combobox.currentIndex() >= 0
         y_selection = self.y_col_combobox.currentIndex() >= 0
         self.build_graph_btn.setEnabled(x_selection and y_selection)
+
+    def on_color_selected(self, index):
+        if index >= 0:
+            selected_color = self.color_model.data(
+                self.color_model.index(index), Qt.UserRole
+            )
+            color_name = self.color_model.data(
+                self.color_model.index(index), Qt.DisplayRole
+            )
+            if selected_color:
+                print(f"Выбран цвет: {color_name} ({selected_color.name()})")
+                self.color_selected.emit(selected_color.name())
+        pass
 
     def _update_file_info(self, row_count, col_count):
         self.encoding_label.setText(f"Кодировка: {self.loader_5_thread.encoding}")
