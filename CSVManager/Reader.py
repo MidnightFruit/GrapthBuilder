@@ -114,14 +114,47 @@ class Reader:
         except Exception as e:
             raise RuntimeError(f"Ошибка при чтении CSV: {str(e)}")
 
+    def read_n(self, n):
+        """
+        Считывает n строк из CSV-файла и возвращает данные.
+        Не загружает весь файл в память.
+
+        :param n: Количество строк для чтения.
+        :return: Список словарей с данными.
+        """
+        if not os.path.exists(self.file_path):
+            raise FileNotFoundError(f"Файл не найден: {self.file_path}")
+
+        # Автоматическое определение параметров
+        self.auto_detect_parameters()
+
+        try:
+            with open(self.file_path, 'r', encoding=self._detected_encoding) as file:
+                # Пропускаем строку с sep= при ее наличии
+                if self._has_sep_line:
+                    next(file)
+
+                reader = csv.DictReader(file, delimiter=self._detected_delimiter)
+                data = []
+
+                # Читаем ровно n строк
+                for i, row in enumerate(reader):
+                    if i >= n:
+                        break
+                    data.append(row)
+
+                return data
+
+        except Exception as e:
+            raise RuntimeError(f"Ошибка при чтении CSV: {str(e)}")
 
     # Пример использования
 
 if __name__ == "__main__":
-    reader = Reader('C:\\Users\\USER\\Desktop\\Python\\Scripts\\data\\deformation_19-06-2025-10-54-35_001_deformation_params.csv')
+    reader = Reader('C:\\Users\\USER\\Desktop\\Python\\Scripts\\data\\eq_data.csv')
 
     try:
-        data = reader.read()
+        data = reader.read_n(5)
 
         if data:
             print(f"Определенная кодировка: {reader._detected_encoding}")

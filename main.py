@@ -1,199 +1,211 @@
 import sys
-import random
+
 from PySide6 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
-import numpy as np
+
+from CSVLoader import CSVLoader
 
 
-class RealTimeGraph(QtWidgets.QMainWindow):
+class GraphBuilder(QtWidgets.QMainWindow):
+
+    _CSV_loader_window = None
+
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("График функций")
+        self.resize(840, 840)
+        self.setMinimumSize(840, 840)
 
-        # Настройка главного окна
-        self.setWindowTitle("Реал-тайм графики с PyQtGraph")
-        self.resize(1200, 800)
+        self._init_menu()
 
         # Создание центрального виджета и layout
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
-        layout = QtWidgets.QVBoxLayout(central_widget)
+        main_layout = QtWidgets.QHBoxLayout(central_widget)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0,0,0,0)
 
-        # Создание виджета для графиков
+        # Виджет для панели управления
+        control_widget = QtWidgets.QWidget()
+        control_widget.setFixedWidth(110)
+        control_layout = QtWidgets.QVBoxLayout(control_widget)
+        control_layout.setContentsMargins(0,5,0,0)
+
+        self._init_btn()
+
+        control_layout.addWidget(self.clear_btn)
+        control_layout.addWidget(self.build_median_btn)
+        control_layout.addStretch()
+        control_layout.setAlignment(QtCore.Qt.AlignCenter)
+
+        main_layout.addWidget(control_widget)
+
+        # Виджет для графиков
         self.graph_widget = pg.GraphicsLayoutWidget()
-        layout.addWidget(self.graph_widget)
+        main_layout.addWidget(self.graph_widget, 1)
 
-        # Настройка панели управления
-        control_panel = QtWidgets.QHBoxLayout()
-        layout.addLayout(control_panel)
+        self.graphs = {}
+        self.plot = None
+
+        self.is_line = False
+        self.color = "#ff0000"
+
+
+    def _init_btn(self):
+        """
+        Инициализация кнопок на контрольной панели
+        :return:
+        """
+        # Стиль кнопок
+
+        btn_style = """
+                QPushButton {
+                    font-family: Regular;
+                    font-size: 10px;
+                }
+                """
 
         # Кнопки управления
-        self.pause_btn = QtWidgets.QPushButton("Пауза")
-        self.pause_btn.setCheckable(True)
-        self.pause_btn.toggled.connect(self.on_pause_toggled)
-        control_panel.addWidget(self.pause_btn)
+        self.build_median_btn = QtWidgets.QPushButton("Построить\n медиану")
+        self.build_median_btn.setStyleSheet(btn_style)
+        self.build_median_btn.setCheckable(True)
+        self.build_median_btn.toggled.connect(self.build_median)
+        self.build_median_btn.setFixedSize(100, 30)
 
         self.clear_btn = QtWidgets.QPushButton("Очистить")
-        self.clear_btn.clicked.connect(self.on_clear_clicked)
-        control_panel.addWidget(self.clear_btn)
-
-        # Создание графиков
-        self.setup_graphs()
-
-        # Данные для графиков
-        self.x = np.linspace(0, 10, 1000)
-        self.y1 = np.zeros(1000)
-        self.y2 = np.zeros(1000)
-        self.y3 = np.zeros(1000)
-        self.ptr = 0
-
-        # Настройка таймеров
-        self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.update_data)
-        self.update_timer.start(50)  # Обновление каждые 50 мс
-
-        # Настройка стиля
-        self.setup_styles()
-
-    def setup_graphs(self):
-        """Настройка графиков"""
-        # Первый график - синусоида
-        self.plot1 = self.graph_widget.addPlot(title="Синусоидальный сигнал")
-        self.plot1.addLegend()
-        self.plot1.showGrid(x=True, y=True)
-        self.plot1.setLabel('left', 'Амплитуда', 'V')
-        self.plot1.setLabel('bottom', 'Время', 's')
-        self.curve1 = self.plot1.plot(pen=pg.mkPen('r', width=2), name="Синус")
-        self.curve1a = self.plot1.plot(pen=pg.mkPen('g', width=1, style=QtCore.Qt.DashLine), name="Сглаженный")
-
-        # Второй график - шум
-        self.plot2 = self.graph_widget.nextRow()
-        self.plot2 = self.graph_widget.addPlot(title="Случайный сигнал")
-        self.plot2.showGrid(x=True, y=True)
-        self.plot2.setLabel('left', 'Амплитуда', 'V')
-        self.plot2.setLabel('bottom', 'Время', 's')
-        self.curve2 = self.plot2.plot(pen=pg.mkPen('b', width=2))
-
-        # Третий график - комбинированный
-        self.plot3 = self.graph_widget.nextRow()
-        self.plot3 = self.graph_widget.addPlot(title="Комбинированный сигнал")
-        self.plot3.showGrid(x=True, y=True)
-        self.plot3.setLabel('left', 'Амплитуда', 'V')
-        self.plot3.setLabel('bottom', 'Время', 's')
-        self.curve3 = self.plot3.plot(pen=pg.mkPen('y', width=2))
-
-        # Регионы выбора на графике
-        self.region = pg.LinearRegionItem()
-        self.region.setZValue(10)
-        self.plot3.addItem(self.region)
-        self.region.sigRegionChanged.connect(self.update_region)
-
-        # Перекрестие на всех графиках
-        self.vLine = pg.InfiniteLine(angle=90, movable=False)
-        self.hLine = pg.InfiniteLine(angle=0, movable=False)
-        self.plot1.addItem(self.vLine, ignoreBounds=True)
-        self.plot1.addItem(self.hLine, ignoreBounds=True)
-        self.proxy = pg.SignalProxy(self.plot1.scene().sigMouseMoved, rateLimit=60, slot=self.mouse_moved)
-
-    def setup_styles(self):
-        """Настройка стилей графиков"""
-        # Установка темного фона
-        self.graph_widget.setBackground('k')
-
-        # Стиль сетки
-        for plot in [self.plot1, self.plot2, self.plot3]:
-            plot.getAxis('left').setPen('w')
-            plot.getAxis('bottom').setPen('w')
-            plot.getAxis('left').setTextPen('w')
-            plot.getAxis('bottom').setTextPen('w')
-
-        # Стиль кнопок
-        btn_style = """
-            QPushButton {
-                background-color: #2b2b2b;
-                color: white;
-                border: 1px solid #3b3b3b;
-                padding: 5px;
-                border-radius: 3px;
-            }
-            QPushButton:pressed {
-                background-color: #3b3b3b;
-            }
-            QPushButton:checked {
-                background-color: #5d5d5d;
-            }
-        """
-        self.pause_btn.setStyleSheet(btn_style)
         self.clear_btn.setStyleSheet(btn_style)
+        self.clear_btn.pressed.connect(self.clear_graph)
+        self.clear_btn.setFixedSize(100, 30)
 
-    def update_data(self):
-        """Обновление данных графиков"""
-        if self.pause_btn.isChecked():
+    def _open_CSV_loader(self):
+        if not self._CSV_loader_window:
+            self._CSV_loader_window = CSVLoader()
+            self._CSV_loader_window.cols_selected.connect(self._on_cols_selected)
+            self._CSV_loader_window.is_line_checked.connect(self.set_is_lined)
+            self._CSV_loader_window.color_selected.connect(self._on_color_selected)
+
+        self._CSV_loader_window.show()
+        self._CSV_loader_window.raise_()
+        self._CSV_loader_window.activateWindow()
+
+    def _init_menu(self):
+        """
+        Инициализация меню панели
+        :return:
+        """
+
+        # Меню бар
+        menu_bar = self.menuBar()
+        menu_bar.setMinimumHeight(20)
+        file_menu = menu_bar.addMenu("Файл")
+
+        menu_bar.setStyleSheet("""
+            QMenuBar {
+                height: 20px;
+            }
+            QMenuBar::item {
+                height: 20px;
+                padding: 0px ;
+                background: transparent;
+            }
+            QMenuBar::item:selected {
+                background: #969696;
+            }
+            QMenuBar::item:pressed {
+                background: #c0c0c0;
+            }
+        """)
+
+        # Меню файла
+        open_action = QtGui.QAction("Открыть", self)
+        save_as_action = QtGui.QAction("Сохранить как ...", self)
+        exit_action = QtGui.QAction("Выход", self)
+
+        exit_action.triggered.connect(self.close)
+        open_action.triggered.connect(self._open_CSV_loader)
+
+
+        file_menu.addAction(open_action)
+        file_menu.addAction(save_as_action)
+        file_menu.addAction(exit_action)
+
+    def _on_cols_selected(self, data, file_name, x_field, y_field):
+        print(f"data: {data}")
+        print(f"for x: {x_field}")
+        print(f"for y: {y_field}")
+
+        graph_key = file_name+x_field+y_field
+        graph = []
+
+        if not self.plot:
+            self.plot = self.graph_widget.addPlot(titele=f"X = {x_field}"
+                                         f"Y = {y_field}")
+            self.plot.addLegend()
+            self.plot.showGrid(x=True, y=True)
+
+
+        x = [float(item[x_field].replace(",", ".")) for item in data]
+        y = [float(item[y_field].replace(",", ".")) for item in data]
+
+        if self.graphs.get(graph_key, False):
+
+            if self.is_line:
+                curve = self.plot.plot(pen=pg.mkPen(color=self.color, width=2), symbol='o')
+                curve.setData(x, y)
+                graph.append(curve)
+            else:
+                curve = self.plot.plot(pen=None, symbol='o')
+                curve.setData(x, y)
+                graph.append(curve)
+
+        else:
+            if self.is_line:
+                curve = self.plot.plot(pen=pg.mkPen(color=self.color, width=2), symbol='o')
+
+                curve.setData(x, y)
+
+                graph.append(curve)
+            else:
+                curve = self.plot.plot(pen=None, symbol='o')
+
+                curve.setData(x, y)
+
+                graph.append(curve)
+
+        self.graphs[file_name+x_field+y_field] = graph
+        pass
+
+    def set_is_lined(self, _is_lined):
+        self.is_line = _is_lined
+
+    def build_median(self):
+        pass
+
+    def clear_graph(self):
+        if not self.graphs:
             return
+        self.plot.clear()
+        self.graphs = {}
 
-        # Генерация новых данных
-        t = self.ptr / 10.0
-        noise = random.random() * 0.5
+    def _on_color_selected(self, color):
+        self.color = color
 
-        # Обновление данных
-        self.y1[:-1] = self.y1[1:]
-        self.y2[:-1] = self.y2[1:]
-        self.y3[:-1] = self.y3[1:]
-
-        self.y1[-1] = np.sin(t) + noise
-        self.y2[-1] = random.random() * 2 - 1
-        self.y3[-1] = self.y1[-1] + self.y2[-1]
-
-        # Обновление кривых
-        self.curve1.setData(self.x, self.y1)
-        self.curve2.setData(self.x, self.y2)
-        self.curve3.setData(self.x, self.y3)
-
-        # Сглаженная версия (скользящее среднее)
-        smoothed = np.convolve(self.y1, np.ones(10) / 10, mode='same')
-        self.curve1a.setData(self.x, smoothed)
-
-        self.ptr += 1
-
-    def update_region(self):
-        """Обновление региона выбора"""
-        self.region.setZValue(10)
-        minX, maxX = self.region.getRegion()
-        self.plot1.setXRange(minX, maxX, padding=0)
-
-    def mouse_moved(self, event):
-        """Обработка движения мыши для отображения перекрестия"""
-        pos = event[0]
-        if self.plot1.sceneBoundingRect().contains(pos):
-            mousePoint = self.plot1.vb.mapSceneToView(pos)
-            self.vLine.setPos(mousePoint.x())
-            self.hLine.setPos(mousePoint.y())
-
-            # Обновление текста с координатами
-            self.plot1.setTitle(f"<span style='font-size: 12pt'>X: {mousePoint.x():.2f}, \
-                <span style='color: red'>Y1: {mousePoint.y():.2f}</span>")
-
-    def on_pause_toggled(self, checked):
-        """Обработка нажатия кнопки паузы"""
-        self.pause_btn.setText("Возобновить" if checked else "Пауза")
-
-    def on_clear_clicked(self):
-        """Обработка нажатия кнопки очистки"""
-        self.y1 = np.zeros(1000)
-        self.y2 = np.zeros(1000)
-        self.y3 = np.zeros(1000)
-        self.ptr = 0
-
+    def closeEvent(self, event, /):
+        super().closeEvent(event)
+        if not self._CSV_loader_window:
+            return
+        self._CSV_loader_window.close()
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
 
-    # Установка темной палитры для приложения
-    app.setStyle('Fusion')
-    dark_palette = QtGui.QPalette()
-    dark_palette.setColor(QtGui.QPalette.Window, QtGui.QColor(53, 53, 53))
-    dark_palette.setColor(QtGui.QPalette.WindowText, QtCore.Qt.white)
-    app.setPalette(dark_palette)
+    app = QtWidgets.QApplication.instance()
 
-    window = RealTimeGraph()
+    if app is None:  # Если его нет,
+        app = QtWidgets.QApplication(sys.argv)  # создаем новый
+
+    app.setStyle("Fusion")
+
+
+    window = GraphBuilder()
     window.show()
-    sys.exit(app.exec())
+    app.exec()
