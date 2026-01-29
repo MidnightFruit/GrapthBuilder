@@ -3,7 +3,15 @@ from tkinter.font import names
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, QSize
 from PySide6.QtGui import QPixmap, QPainter, QColor
-from PySide6.QtWidgets import QStyledItemDelegate, QStyle, QApplication, QVBoxLayout, QWidget, QMainWindow, QComboBox
+from PySide6.QtWidgets import (
+    QStyledItemDelegate,
+    QStyle,
+    QApplication,
+    QVBoxLayout,
+    QWidget,
+    QMainWindow,
+    QComboBox,
+)
 
 
 class ColorListModel(QAbstractListModel):
@@ -15,7 +23,7 @@ class ColorListModel(QAbstractListModel):
         else:
             self._colors = [(color.name(), color) for color in colors]
 
-    def rowCount(self, parent = QModelIndex()):
+    def rowCount(self, parent=QModelIndex()):
         return len(self._colors)
 
     def data(self, index, role=Qt.DisplayRole):
@@ -35,6 +43,7 @@ class ColorListModel(QAbstractListModel):
 
         return None
 
+
 class ColorDelegate(QStyledItemDelegate):
 
     def __init__(self, parent=None):
@@ -46,25 +55,33 @@ class ColorDelegate(QStyledItemDelegate):
         display_text = index.data(Qt.DisplayRole)
 
         if color is None or display_text is None:
-            super().paint(painter, option,index)
+            super().paint(painter, option, index)
             return
         painter.save()
 
         if option.state & QStyle.State_Selected:
-            painter.fillRect(option.rect, option.palette.highlightedText().color() if option.state & QStyle.State_Active
-            else option.palette.alternateBase())
+            painter.fillRect(
+                option.rect,
+                (
+                    option.palette.highlightedText().color()
+                    if option.state & QStyle.State_Active
+                    else option.palette.alternateBase()
+                ),
+            )
             text_color = option.palette.highlightedText().color()
         else:
             painter.fillRect(option.rect, option.palette.base())
             text_color = option.palette.text().color()
 
         square_size = option.rect.height() - 6
-        color_rect = option.rect.adjusted(3, 3, -(option.rect.width() - square_size - 3), -3)
+        color_rect = option.rect.adjusted(
+            3, 3, -(option.rect.width() - square_size - 3), -3
+        )
         painter.fillRect(color_rect, color)
         painter.setPen(Qt.black)
         painter.drawRect(color_rect)
 
-        text_rect = option.rect.adjusted(square_size+6,0,-3,0)
+        text_rect = option.rect.adjusted(square_size + 6, 0, -3, 0)
         painter.setPen(text_color)
         painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, display_text)
 
@@ -73,10 +90,12 @@ class ColorDelegate(QStyledItemDelegate):
     def sizeHint(self, option, index: QModelIndex):
         return QSize(120, 26)
 
+
 class MainWindow(QMainWindow):
     """
     Пример основного окна с QComboBox для выбора цвета.
     """
+
     def __init__(self):
         super().__init__()
 
@@ -121,7 +140,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.color_combo)
 
         # Устанавливаем начальный выбранный цвет
-        self.color_combo.setCurrentIndex(2) # Синий по умолчанию
+        self.color_combo.setCurrentIndex(2)  # Синий по умолчанию
 
     def on_color_selected(self, index):
         """
@@ -142,6 +161,7 @@ class MainWindow(QMainWindow):
                 # Например:
                 # my_plot_item.setPen(selected_color) # Установить цвет линии
                 # my_scatter_plot_item.setBrush(selected_color) # Установить цвет заливки точек
+
 
 # --- Запуск приложения ---
 if __name__ == "__main__":
